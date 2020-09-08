@@ -9,7 +9,7 @@ from gpytorch.lazy import delazify
 
 from typing import Union, Callable
 
-from gp_sampling.layer import Layer
+from gp_sampling.utils.layer import Layer
 
 
 class Basis(Module):
@@ -83,10 +83,11 @@ class RandomFourierBasis(Basis):
                 kernel_initializer=self.kernel_initializer,
                 bias_initializer=self.bias_initializer,
             )
-
-        scaled = torch.div(X, self.kernel.outputscale)
+        scaled = torch.div(X, self.kernel.base_kernel.lengthscale)
         outputs = self.layer(scaled)
-        return torch.sqrt(torch.tensor(2.0) / self.units) * outputs
+        return torch.sqrt(
+            torch.tensor(2.0) * self.kernel.outputscale / self.units
+        ) * outputs
 
     @staticmethod
     def bias_initializer(
