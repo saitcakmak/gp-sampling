@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union, List, Iterable, Optional
 
 import torch
 from botorch.models import SingleTaskGP
@@ -28,6 +28,7 @@ def decoupled_sampler(
     Returns:
         A CompositeSampler object
     """
+    model_batch_shape = list(model._input_batch_shape)
 
     def _create_prior_fn() -> BayesianLinearSampler:
         r"""
@@ -38,12 +39,16 @@ def decoupled_sampler(
         """
         basis = prior_basis
         if basis is None:
-            basis = RandomFourierBasis(kernel=model.covar_module, units=num_basis)
+            basis = RandomFourierBasis(
+                kernel=model.covar_module,
+                units=num_basis,
+                model_batch_shape=model_batch_shape,
+            )
 
         def w_init(shape):
             return torch.randn(shape)
 
-        weights = w_init(batch_shape + [num_basis])
+        weights = w_init(list(sample_shape) + model_batch_shape + [1, num_basis])
         return BayesianLinearSampler(
             basis=basis, weights=weights, weight_initializer=w_init
         )
@@ -61,7 +66,7 @@ def decoupled_sampler(
         sigma2 = model.likelihood.noise
         if model.mean_module is not None:
             u = u - model.mean_module(Z)
-        if hasattr(model, "outcome_transform") and model.outcome_transform is not None:
+        if getattr(model, "outcome_transform", None) is not None:
             u = model.outcome_transform.untransform(u)[0]
         u = u.unsqueeze(-1)
         m = Z.shape[-2]
@@ -78,7 +83,7 @@ def decoupled_sampler(
                 shape: the shape of the weights
 
             Returns:
-                weights of shape
+                weights of `shape`
             """
             prior_f = prior_fn(Z)
             prior_u = prior_f + (sigma2 ** 0.5) * torch.randn(
@@ -89,12 +94,11 @@ def decoupled_sampler(
             assert tuple(init.shape) == tuple(shape)
             return init
 
-        weights = w_init(shape=batch_shape + [m])
+        weights = w_init(shape=list(sample_shape) + model_batch_shape + [1, m])
         return BayesianLinearSampler(
             basis=basis, weights=weights, weight_initializer=w_init
         )
 
-    batch_shape = list(sample_shape) + [1]
     prior_fn = _create_prior_fn()
     update_fn = _create_update_fn()
 

@@ -65,7 +65,9 @@ def exact_ts(
         .to(device)
     )
     with torch.no_grad():
-        samples = model.posterior(X).rsample(sample_shape=torch.Size([q])).squeeze(-1).t()
+        samples = (
+            model.posterior(X).rsample(sample_shape=torch.Size([q])).squeeze(-1).t()
+        )
     arg_max = torch.argmax(samples, dim=-1)
     return X[arg_max]
 

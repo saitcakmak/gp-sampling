@@ -7,7 +7,7 @@ import gpytorch
 from gpytorch.kernels import Kernel, ScaleKernel
 from gpytorch.lazy import delazify
 
-from typing import Union, Callable
+from typing import Union, Callable, Optional, Iterable
 
 from gp_sampling.utils.layer import Layer
 
@@ -46,7 +46,13 @@ class KernelBasis(Basis):
 
 
 class RandomFourierBasis(Basis):
-    def __init__(self, kernel: ScaleKernel, units: int, activation: Callable = None):
+    def __init__(
+        self,
+        kernel: ScaleKernel,
+        units: int,
+        model_batch_shape: Optional[Iterable] = None,
+        activation: Callable = None,
+    ) -> None:
         """
         Random Fourier Basis that is used to construct the prior component of the
         decoupled samplers.
@@ -58,12 +64,17 @@ class RandomFourierBasis(Basis):
         Args:
             kernel: The kernel to approximate
             units: Number of Fourier basis
+            model_batch_shape: The batch shape of the GP model. If not given, all
+                batch models use the same basis, which is not ideal.
             activation: The activation function for the layer, defaults to torch.cos
         """
         super().__init__()
         self.kernel = kernel
         self.layer = None
         self.units = units
+        self.model_batch_shape = (
+            list() if model_batch_shape is None else list(model_batch_shape)
+        )
         self.activation = torch.cos if activation is None else activation
 
     def forward(self, X: Tensor) -> Tensor:
@@ -71,10 +82,10 @@ class RandomFourierBasis(Basis):
         Evaluates the Fourier basis on the input
 
         Args:
-            X: `n x d` tensor of input values
+            X: `model_batch_shape x n x d` tensor of input values
 
         Returns:
-            `n x units` tensor of evaluations
+            `model_batch_shape x n x units` tensor of evaluations
         """
         if self.layer is None:
             self.layer = Layer(
@@ -85,13 +96,16 @@ class RandomFourierBasis(Basis):
             )
         scaled = torch.div(X, self.kernel.base_kernel.lengthscale)
         outputs = self.layer(scaled)
-        return torch.sqrt(
-            torch.tensor(2.0) * self.kernel.outputscale / self.units
-        ) * outputs
+        return (
+            torch.sqrt(torch.tensor(2.0) * self.kernel.outputscale / self.units)
+            * outputs
+        )
 
-    @staticmethod
     def bias_initializer(
-        shape: Union[list, tuple, torch.Size], maxval: float = 2 * math.pi, **kwargs
+        self,
+        shape: Union[list, tuple, torch.Size],
+        maxval: float = 2 * math.pi,
+        **kwargs
     ) -> Tensor:
         r"""
         Provides the random samples for initializing the layer bias.
@@ -102,9 +116,9 @@ class RandomFourierBasis(Basis):
             **kwargs: To be passed on to `torch.rand`
 
         Returns:
-            The random samples of `shape`
+            The random samples of `model_batch_shape x 1 x shape`
         """
-        return torch.rand(size=shape, **kwargs) * maxval
+        return torch.rand(size=self.model_batch_shape + [1] + shape, **kwargs) * maxval
 
     def kernel_initializer(
         self, shape: Union[list, tuple, torch.Size], **kwargs
@@ -117,16 +131,18 @@ class RandomFourierBasis(Basis):
             **kwargs: To be passed on to `torch.rand` and `randn`
 
         Returns:
-            The random samples of `shape`
+            The random samples of `model_batch_shape x shape`
         """
-        shape = list(shape)
+        out_shape = self.model_batch_shape + list(shape)
         if isinstance(self.kernel.base_kernel, gpytorch.kernels.RBFKernel):
-            return torch.randn(shape, **kwargs)
+            return torch.randn(out_shape, **kwargs)
         elif isinstance(self.kernel.base_kernel, gpytorch.kernels.MaternKernel):
             nu = self.kernel.base_kernel.nu
-            normal_rvs = torch.randn(shape, **kwargs)
+            normal_rvs = torch.randn(out_shape, **kwargs)
             gamma_dist = torch.distributions.Gamma(nu, nu)
-            gamma_rvs = gamma_dist.rsample(shape[:-2] + [1] + shape[-1:]).to(normal_rvs)
+            gamma_rvs = gamma_dist.rsample(out_shape[:-2] + [1] + out_shape[-1:]).to(
+                normal_rvs
+            )
             return torch.rsqrt(gamma_rvs) * normal_rvs
         else:
             raise NotImplementedError

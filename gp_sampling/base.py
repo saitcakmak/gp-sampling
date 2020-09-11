@@ -66,7 +66,8 @@ class BayesianLinearSampler(Sampler):
         functions, i.e. $f(x) = basis(x) @ w$.
 
         Args:
-            weights: Weights for linear combination of the basis
+            weights: A `sample_shape x model_batch_shape x 1 x num_basis`-dim tensor
+                of weights for linear combination of the basis
             basis: The basis function, if None uses b(X) = X
             mean_function: The mean function
             weight_initializer: A callable for initializing the weights
@@ -81,11 +82,11 @@ class BayesianLinearSampler(Sampler):
         r"""
 
         Args:
-            X: An `n x d` tensor of sampling locations
+            X: A `model_batch_shape x n x d` tensor of sampling locations
             **kwargs: kwargs to be passed on to the basis
 
         Returns:
-            An `n x d` tensor of samples
+            An `sample_shape x model_batch_shape x n x 1` tensor of samples
         """
         features = X if self.basis is None else self.basis(X, **kwargs)
         outputs = torch.matmul(

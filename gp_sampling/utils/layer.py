@@ -64,16 +64,15 @@ class Layer(Module):
         Apply the layer operations to the input.
 
         Args:
-            X: `n x d` tensor of inputs
+            X: `model_batch_shape x n x d` tensor of inputs
 
         Returns:
-            `n x units` tensor
+            `model_batch_shape x n x units` tensor
         """
-        if not self.built or self.bias.shape != torch.Size([self.units]):
+        if not self.built or self.bias.shape[-1] != self.units:
             self.build(X.shape)
         outputs = torch.matmul(X, self.kernel)
-        # original code does some broadcasting. Why?
-        outputs = outputs + self.bias
+        outputs = outputs + self.bias.expand_as(outputs)
         if self.activation is not None:
             outputs = self.activation(outputs)
         return outputs
