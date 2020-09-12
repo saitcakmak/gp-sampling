@@ -94,7 +94,7 @@ class RandomFourierBasis(Basis):
                 kernel_initializer=self.kernel_initializer,
                 bias_initializer=self.bias_initializer,
             )
-        scaled = torch.div(X, self.kernel.base_kernel.lengthscale)
+        scaled = torch.div(X, self.kernel.base_kernel.lengthscale.expand_as(X))
         outputs = self.layer(scaled)
         return (
             torch.sqrt(torch.tensor(2.0) * self.kernel.outputscale / self.units)
