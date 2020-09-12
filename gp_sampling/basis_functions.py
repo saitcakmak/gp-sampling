@@ -50,7 +50,7 @@ class RandomFourierBasis(Basis):
         self,
         kernel: ScaleKernel,
         units: int,
-        model_batch_shape: Optional[Iterable] = None,
+        input_batch_shape: Optional[Iterable] = None,
         activation: Callable = None,
     ) -> None:
         """
@@ -64,7 +64,7 @@ class RandomFourierBasis(Basis):
         Args:
             kernel: The kernel to approximate
             units: Number of Fourier basis
-            model_batch_shape: The batch shape of the GP model. If not given, all
+            input_batch_shape: The batch shape of the GP model. If not given, all
                 batch models use the same basis, which is not ideal.
             activation: The activation function for the layer, defaults to torch.cos
         """
@@ -72,8 +72,8 @@ class RandomFourierBasis(Basis):
         self.kernel = kernel
         self.layer = None
         self.units = units
-        self.model_batch_shape = (
-            list() if model_batch_shape is None else list(model_batch_shape)
+        self.input_batch_shape = (
+            list() if input_batch_shape is None else list(input_batch_shape)
         )
         self.activation = torch.cos if activation is None else activation
 
@@ -82,10 +82,10 @@ class RandomFourierBasis(Basis):
         Evaluates the Fourier basis on the input
 
         Args:
-            X: `model_batch_shape x n x d` tensor of input values
+            X: `input_batch_shape x n x d` tensor of input values
 
         Returns:
-            `model_batch_shape x n x units` tensor of evaluations
+            `input_batch_shape x n x units` tensor of evaluations
         """
         if self.layer is None:
             self.layer = Layer(
@@ -116,9 +116,9 @@ class RandomFourierBasis(Basis):
             **kwargs: To be passed on to `torch.rand`
 
         Returns:
-            The random samples of `model_batch_shape x 1 x shape`
+            The random samples of `input_batch_shape x 1 x shape`
         """
-        return torch.rand(size=self.model_batch_shape + [1] + shape, **kwargs) * maxval
+        return torch.rand(size=self.input_batch_shape + [1] + shape, **kwargs) * maxval
 
     def kernel_initializer(
         self, shape: Union[list, tuple, torch.Size], **kwargs
@@ -131,9 +131,9 @@ class RandomFourierBasis(Basis):
             **kwargs: To be passed on to `torch.rand` and `randn`
 
         Returns:
-            The random samples of `model_batch_shape x shape`
+            The random samples of `input_batch_shape x shape`
         """
-        out_shape = self.model_batch_shape + list(shape)
+        out_shape = self.input_batch_shape + list(shape)
         if isinstance(self.kernel.base_kernel, gpytorch.kernels.RBFKernel):
             return torch.randn(out_shape, **kwargs)
         elif isinstance(self.kernel.base_kernel, gpytorch.kernels.MaternKernel):

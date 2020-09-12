@@ -14,6 +14,7 @@ def decoupled_sampler(
     sample_shape: Union[list, tuple, torch.Size],
     num_basis: int,
     prior_basis: Basis = None,
+    input_batch_shape: Optional[Iterable] = None,
 ) -> CompositeSampler:
     r"""
     Constructs the decoupled sampler as an instance of CompositeSampler.
@@ -24,11 +25,19 @@ def decoupled_sampler(
         sample_shape: Output shape of the sampler
         num_basis: Number of basis functions to use
         prior_basis: The choice of the prior basis
+        input_batch_shape: When drawing samples for batches of inputs, or with a
+            batched GP model, this ensures that the samples are of the appropriate shape.
 
     Returns:
         A CompositeSampler object
     """
-    model_batch_shape = list(model._input_batch_shape)
+    if input_batch_shape is None:
+        if model._input_batch_shape != torch.Size():
+            input_batch_shape = list(model._input_batch_shape)
+        else:
+            input_batch_shape = list()
+    else:
+        input_batch_shape = list(input_batch_shape)
 
     def _create_prior_fn() -> BayesianLinearSampler:
         r"""
@@ -42,13 +51,13 @@ def decoupled_sampler(
             basis = RandomFourierBasis(
                 kernel=model.covar_module,
                 units=num_basis,
-                model_batch_shape=model_batch_shape,
+                input_batch_shape=input_batch_shape,
             )
 
         def w_init(shape):
             return torch.randn(shape)
 
-        weights = w_init(list(sample_shape) + model_batch_shape + [1, num_basis])
+        weights = w_init(list(sample_shape) + input_batch_shape + [1, num_basis])
         return BayesianLinearSampler(
             basis=basis, weights=weights, weight_initializer=w_init
         )
@@ -94,7 +103,7 @@ def decoupled_sampler(
             assert tuple(init.shape) == tuple(shape)
             return init
 
-        weights = w_init(shape=list(sample_shape) + model_batch_shape + [1, m])
+        weights = w_init(shape=list(sample_shape) + input_batch_shape + [1, m])
         return BayesianLinearSampler(
             basis=basis, weights=weights, weight_initializer=w_init
         )

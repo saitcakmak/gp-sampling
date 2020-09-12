@@ -64,10 +64,10 @@ class Layer(Module):
         Apply the layer operations to the input.
 
         Args:
-            X: `model_batch_shape x n x d` tensor of inputs
+            X: `input_batch_shape x n x d` tensor of inputs
 
         Returns:
-            `model_batch_shape x n x units` tensor
+            `input_batch_shape x n x units` tensor
         """
         if not self.built or self.bias.shape[-1] != self.units:
             self.build(X.shape)
