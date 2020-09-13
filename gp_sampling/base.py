@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 from torch.nn import Module
-from typing import List, Callable
+from typing import List, Callable, Optional, Iterable
 from gp_sampling.basis_functions import Basis
 
 
@@ -16,6 +16,7 @@ class CompositeSampler(Sampler):
         join_rule: Callable,
         samplers: List[Sampler],
         mean_function: Callable = None,
+        input_batch_shape: Optional[Iterable] = None,
     ) -> None:
         r"""
         The composite sampler facilitates sampling from multiple samplers via a join rule.
@@ -24,11 +25,14 @@ class CompositeSampler(Sampler):
             join_rule: A callable to join samplers from different samplers, e.g. sum
             samplers: A list of samplers to sample from
             mean_function: A mean function that is added to the samples
+            input_batch_shape: When drawing samples for batches of inputs, or with a
+                batched GP model, this ensures that the samples are of the appropriate shape.
         """
         super().__init__()
         self.join_rule = join_rule
         self.samplers = samplers
         self.mean_function = mean_function
+        self.input_batch_shape = input_batch_shape
 
     def forward(self, X: Tensor, **kwargs) -> Tensor:
         r"""

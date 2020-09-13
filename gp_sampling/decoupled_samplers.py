@@ -118,4 +118,5 @@ def decoupled_sampler(
         join_rule=list_add,
         samplers=[prior_fn, update_fn],
         mean_function=model.mean_module,
+        input_batch_shape=input_batch_shape
     )
