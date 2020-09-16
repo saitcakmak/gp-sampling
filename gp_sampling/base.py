@@ -26,7 +26,8 @@ class CompositeSampler(Sampler):
             samplers: A list of samplers to sample from
             mean_function: A mean function that is added to the samples
             input_batch_shape: When drawing samples for batches of inputs, or with a
-                batched GP model, this ensures that the samples are of the appropriate shape.
+                batched GP model, this ensures that the samples are of the
+                appropriate shape.
         """
         super().__init__()
         self.join_rule = join_rule
