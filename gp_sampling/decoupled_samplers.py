@@ -30,7 +30,15 @@ def decoupled_sampler(
 
     Returns:
         A CompositeSampler object
+
+    # TODO: there's something going on when using outcome_transform=Standardize().
     """
+    if getattr(model, "outcome_transform", None) is not None:
+        raise RuntimeError(
+            "I have observed weird behavior when using "
+            "`outcome_transform=Standardize()`. Avoid outcome "
+            "transforms for now."
+        )
     if input_batch_shape is None:
         if model._input_batch_shape != torch.Size():
             input_batch_shape = list(model._input_batch_shape)
@@ -79,9 +87,12 @@ def decoupled_sampler(
             u = model.outcome_transform.untransform(u)[0]
         u = u.unsqueeze(-1)
         m = Z.shape[-2]
-        Kuu = delazify(model.covar_module(Z, Z))
-        Suu = Kuu + torch.eye(m) * sigma2
-        Luu = torch.cholesky(Suu)
+        # Kuu = delazify(model.covar_module(Z, Z))
+        # Suu = Kuu + torch.eye(m).to(Kuu) * sigma2
+        # Luu = torch.cholesky(Suu)
+        # modified to use lazy tensor operations.
+        Suu = model.covar_module(Z, Z).add_diag(sigma2)
+        Luu = Suu.cholesky()
         basis = KernelBasis(kernel=model.covar_module, centers=Z)
 
         def w_init(shape):
@@ -96,9 +107,9 @@ def decoupled_sampler(
             """
             prior_f = prior_fn(Z)
             prior_u = prior_f + (sigma2 ** 0.5) * torch.randn(
-                prior_f.shape, dtype=prior_f.dtype
+                prior_f.shape, dtype=prior_f.dtype, device=sigma2.device
             )
-            init = torch.cholesky_solve(u - prior_u, Luu)
+            init = torch.cholesky_solve(u - prior_u, delazify(Luu))
             init = torch.conj(init).permute(*range(init.dim() - 2), -1, -2)
             assert tuple(init.shape) == tuple(shape)
             return init
@@ -118,5 +129,5 @@ def decoupled_sampler(
         join_rule=list_add,
         samplers=[prior_fn, update_fn],
         mean_function=model.mean_module,
-        input_batch_shape=input_batch_shape
+        input_batch_shape=input_batch_shape,
     )

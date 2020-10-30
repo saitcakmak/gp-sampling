@@ -76,6 +76,8 @@ class RandomFourierBasis(Basis):
             list() if input_batch_shape is None else list(input_batch_shape)
         )
         self.activation = torch.cos if activation is None else activation
+        # TODO: implement a device / dtype option
+        #   We ca just take these inputs from the model
 
     def forward(self, X: Tensor) -> Tensor:
         r"""

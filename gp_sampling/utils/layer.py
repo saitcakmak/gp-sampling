@@ -71,8 +71,9 @@ class Layer(Module):
         """
         if not self.built or self.bias.shape[-1] != self.units:
             self.build(X.shape)
-        outputs = torch.matmul(X, self.kernel)
-        outputs = outputs + self.bias.expand_as(outputs)
+        # TODO: eliminate .to calls after implementing device options
+        outputs = torch.matmul(X, self.kernel.to(X))
+        outputs = outputs + self.bias.expand_as(outputs).to(X)
         if self.activation is not None:
             outputs = self.activation(outputs)
         return outputs

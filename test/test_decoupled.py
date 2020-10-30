@@ -17,7 +17,7 @@ class TestDecoupledSampler(BotorchTestCase):
             model = SingleTaskGP(
                 torch.rand(train_n, dim),
                 torch.rand(train_n, 1),
-                outcome_transform=transform,
+                # outcome_transform=transform,
             )
             sampler = decoupled_sampler(
                 model=model, sample_shape=sample_shape, num_basis=num_basis

@@ -93,9 +93,10 @@ class BayesianLinearSampler(Sampler):
         Returns:
             An `sample_shape x input_batch_shape x n x 1` tensor of samples
         """
-        features = X if self.basis is None else self.basis(X, **kwargs)
+        # TODO: clear these .to calls after implementing the options
+        features = X if self.basis is None else self.basis(X, **kwargs).to(X)
         outputs = torch.matmul(
-            features, self.weights.permute(*range(self.weights.dim() - 2), -1, -2)
+            features, self.weights.permute(*range(self.weights.dim() - 2), -1, -2).to(X)
         )
         if self.mean_function is not None:
             outputs = outputs + self.mean_function(X)
