@@ -1,3 +1,4 @@
+import warnings
 from typing import Union, List, Iterable, Optional
 
 import torch
@@ -22,7 +23,7 @@ def decoupled_sampler(
 
     Args:
         model: The GP model
-        sample_shape: Output shape of the sampler
+        sample_shape: The number (or batch shape) of sample paths generated.
         num_basis: Number of basis functions to use
         prior_basis: The choice of the prior basis
         input_batch_shape: When drawing samples for batches of inputs, or with a
@@ -46,6 +47,11 @@ def decoupled_sampler(
             input_batch_shape = list()
     else:
         input_batch_shape = list(input_batch_shape)
+    if input_batch_shape != list():
+        warnings.warn(
+            "This has not been tested with batched inputs. Use at your own risk!",
+            RuntimeWarning,
+        )
 
     def _create_prior_fn() -> BayesianLinearSampler:
         r"""
@@ -93,6 +99,8 @@ def decoupled_sampler(
         # modified to use lazy tensor operations.
         Suu = model.covar_module(Z, Z).add_diag(sigma2)
         Luu = Suu.cholesky()
+        # TODO: Luu could probably be replaced with covar.root_decomposition()
+        #   Check this!
         basis = KernelBasis(kernel=model.covar_module, centers=Z)
 
         def w_init(shape):
@@ -128,6 +136,7 @@ def decoupled_sampler(
     return CompositeSampler(
         join_rule=list_add,
         samplers=[prior_fn, update_fn],
+        sample_shape=sample_shape,
         mean_function=model.mean_module,
         input_batch_shape=input_batch_shape,
     )

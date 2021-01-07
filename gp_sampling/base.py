@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 from torch.nn import Module
-from typing import List, Callable, Optional, Iterable
+from typing import List, Callable, Optional, Iterable, Union
 from gp_sampling.basis_functions import Basis
 
 
@@ -15,6 +15,7 @@ class CompositeSampler(Sampler):
         self,
         join_rule: Callable,
         samplers: List[Sampler],
+        sample_shape: Union[list, tuple, torch.Size],
         mean_function: Callable = None,
         input_batch_shape: Optional[Iterable] = None,
     ) -> None:
@@ -24,6 +25,7 @@ class CompositeSampler(Sampler):
         Args:
             join_rule: A callable to join samplers from different samplers, e.g. sum
             samplers: A list of samplers to sample from
+            sample_shape: The number (or batch shape) of sample paths generated.
             mean_function: A mean function that is added to the samples
             input_batch_shape: When drawing samples for batches of inputs, or with a
                 batched GP model, this ensures that the samples are of the
@@ -32,6 +34,7 @@ class CompositeSampler(Sampler):
         super().__init__()
         self.join_rule = join_rule
         self.samplers = samplers
+        self.sample_shape = sample_shape
         self.mean_function = mean_function
         self.input_batch_shape = input_batch_shape
 
