@@ -34,11 +34,13 @@ class TestDecoupledTS(BotorchTestCase):
             sample_shape=[num_samples],
             num_basis=64,
         )
-        next_sample = continuous_decoupled_ts(ps, num_restarts=10, d=self.dim)
+        next_sample = continuous_decoupled_ts(
+            ps, num_restarts=4, raw_samples=32, d=self.dim
+        )
         self.assertEqual(next_sample.shape, torch.Size([num_samples, self.dim]))
 
         # test that the samples actually maximize the sample paths
-        test_X = torch.rand(1000, self.dim)
+        test_X = torch.rand(256, self.dim)
         test_Y = ps(test_X)
         max_Y, _ = test_Y.max(dim=-2, keepdim=True)
         ts_Y = ps(next_sample.unsqueeze(-2))
