@@ -1,5 +1,7 @@
 # GP Sampling
 
+Update: This functionality is now available in BoTorch, [see here.](https://github.com/pytorch/botorch/blob/main/botorch/utils/gp_sampling.py) It is recommended to use the BoTorch version since it will be better maintained going forward.
+
 A minimal implementation of decoupled samplers from "Efficiently Sampling Functions from
  Gaussian Process  Posteriors" (https://arxiv.org/abs/2002.09309) on BoTorch / GPyTorch.
 
